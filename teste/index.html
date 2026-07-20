@@ -1,0 +1,1603 @@
+<!doctype html>
+<html lang="pt-br">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Diagnóstico de API - Relógio de Ponto</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #07111f;
+        --bg-2: #0b1728;
+        --panel: rgba(11, 23, 40, 0.82);
+        --panel-border: rgba(148, 163, 184, 0.18);
+        --text: #e5eefb;
+        --muted: #9db0c6;
+        --accent: #4cc9f0;
+        --accent-2: #8b5cf6;
+        --success: #22c55e;
+        --warning: #f59e0b;
+        --danger: #ef4444;
+        --shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+        --radius: 20px;
+        --radius-sm: 14px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family:
+          Inter,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+        color: var(--text);
+        background:
+          radial-gradient(
+            circle at top left,
+            rgba(76, 201, 240, 0.18),
+            transparent 28%
+          ),
+          radial-gradient(
+            circle at top right,
+            rgba(139, 92, 246, 0.16),
+            transparent 26%
+          ),
+          linear-gradient(180deg, #040912 0%, var(--bg) 44%, #050b14 100%);
+      }
+
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        background-image:
+          linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+        background-size: 44px 44px;
+        mask-image: linear-gradient(
+          180deg,
+          rgba(0, 0, 0, 0.7),
+          transparent 92%
+        );
+      }
+
+      .app {
+        width: min(1400px, calc(100% - 32px));
+        margin: 0 auto;
+        padding: 28px 0 40px;
+        position: relative;
+        z-index: 1;
+      }
+
+      .hero {
+        display: grid;
+        grid-template-columns: minmax(0, 1.55fr) minmax(320px, 0.95fr);
+        gap: 20px;
+        align-items: stretch;
+        margin-bottom: 20px;
+      }
+
+      .hero-card,
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--panel-border);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(20px);
+      }
+
+      .hero-card {
+        padding: 28px;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .hero-card::after {
+        content: "";
+        position: absolute;
+        inset: auto -10% -50% auto;
+        width: 320px;
+        height: 320px;
+        border-radius: 50%;
+        background: radial-gradient(
+          circle,
+          rgba(76, 201, 240, 0.18),
+          transparent 70%
+        );
+        filter: blur(10px);
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        border-radius: 999px;
+        background: rgba(76, 201, 240, 0.1);
+        color: #c7f2ff;
+        font-size: 12px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        margin: 18px 0 12px;
+        font-size: clamp(32px, 4vw, 58px);
+        line-height: 0.96;
+        letter-spacing: -0.05em;
+        max-width: 11ch;
+      }
+
+      .lead {
+        margin: 0;
+        max-width: 78ch;
+        color: var(--muted);
+        line-height: 1.65;
+        font-size: 15px;
+      }
+
+      .metrics {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+        margin-top: 24px;
+      }
+
+      .metric {
+        padding: 16px;
+        border-radius: var(--radius-sm);
+        background: rgba(5, 11, 20, 0.55);
+        border: 1px solid rgba(148, 163, 184, 0.14);
+      }
+
+      .metric span {
+        display: block;
+        color: var(--muted);
+        font-size: 12px;
+        margin-bottom: 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .metric strong {
+        font-size: 18px;
+        line-height: 1.2;
+      }
+
+      .status-card {
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        justify-content: space-between;
+      }
+
+      .status-line {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 14px;
+        border-radius: 999px;
+        font-weight: 700;
+        background: rgba(34, 197, 94, 0.12);
+        color: #b6f7cb;
+        border: 1px solid rgba(34, 197, 94, 0.18);
+      }
+
+      .status-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: var(--success);
+        box-shadow: 0 0 0 6px rgba(34, 197, 94, 0.14);
+      }
+
+      .status-card p {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.6;
+      }
+
+      .progress-rail {
+        position: relative;
+        height: 12px;
+        border-radius: 999px;
+        background: rgba(148, 163, 184, 0.14);
+        overflow: hidden;
+      }
+
+      .progress-bar {
+        position: absolute;
+        inset: 0 auto 0 0;
+        width: 0;
+        border-radius: inherit;
+        background: linear-gradient(90deg, var(--accent), var(--accent-2));
+        transition: width 180ms ease;
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+        gap: 20px;
+        align-items: start;
+      }
+
+      .stack {
+        display: grid;
+        gap: 20px;
+      }
+
+      .panel {
+        padding: 20px;
+      }
+
+      .panel-header {
+        display: flex;
+        align-items: start;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 16px;
+      }
+
+      .panel-header h2 {
+        margin: 0;
+        font-size: 18px;
+        letter-spacing: -0.03em;
+      }
+
+      .panel-header p {
+        margin: 6px 0 0;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.5;
+      }
+
+      .chip-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .chip {
+        padding: 8px 10px;
+        border-radius: 999px;
+        border: 1px solid rgba(148, 163, 184, 0.18);
+        background: rgba(5, 11, 20, 0.45);
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .form-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+      }
+
+      .field {
+        display: grid;
+        gap: 8px;
+      }
+
+      .field.full {
+        grid-column: 1 / -1;
+      }
+
+      label {
+        font-size: 12px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
+      input,
+      textarea,
+      select {
+        width: 100%;
+        border: 1px solid rgba(148, 163, 184, 0.2);
+        background: rgba(5, 11, 20, 0.75);
+        color: var(--text);
+        border-radius: 14px;
+        padding: 12px 14px;
+        font: inherit;
+        outline: none;
+        transition:
+          border-color 160ms ease,
+          box-shadow 160ms ease,
+          transform 160ms ease;
+      }
+
+      input:focus,
+      textarea:focus,
+      select:focus {
+        border-color: rgba(76, 201, 240, 0.65);
+        box-shadow: 0 0 0 4px rgba(76, 201, 240, 0.12);
+      }
+
+      textarea {
+        min-height: 128px;
+        resize: vertical;
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 16px;
+      }
+
+      button {
+        border: 0;
+        border-radius: 14px;
+        padding: 12px 16px;
+        font: inherit;
+        font-weight: 700;
+        cursor: pointer;
+        transition:
+          transform 160ms ease,
+          opacity 160ms ease,
+          box-shadow 160ms ease;
+      }
+
+      button:hover {
+        transform: translateY(-1px);
+      }
+
+      button:disabled {
+        cursor: wait;
+        opacity: 0.7;
+        transform: none;
+      }
+
+      .primary {
+        color: #03131c;
+        background: linear-gradient(135deg, #7ce7ff, #8b5cf6);
+        box-shadow: 0 12px 30px rgba(76, 201, 240, 0.18);
+      }
+
+      .secondary {
+        color: var(--text);
+        background: rgba(148, 163, 184, 0.12);
+        border: 1px solid rgba(148, 163, 184, 0.2);
+      }
+
+      .danger {
+        color: #ffe8e8;
+        background: rgba(239, 68, 68, 0.14);
+        border: 1px solid rgba(239, 68, 68, 0.25);
+      }
+
+      .timeline {
+        display: grid;
+        gap: 12px;
+      }
+
+      .event {
+        display: grid;
+        grid-template-columns: 140px minmax(0, 1fr);
+        gap: 12px;
+        align-items: start;
+        padding: 12px 14px;
+        border-radius: 14px;
+        background: rgba(5, 11, 20, 0.55);
+        border: 1px solid rgba(148, 163, 184, 0.14);
+      }
+
+      .event time {
+        color: #c9d6e6;
+        font-size: 12px;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .event strong {
+        display: block;
+        margin-bottom: 4px;
+        font-size: 14px;
+      }
+
+      .event span {
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.55;
+        word-break: break-word;
+      }
+
+      .codebox {
+        margin: 0;
+        padding: 16px;
+        min-height: 140px;
+        border-radius: 16px;
+        background: #03101d;
+        border: 1px solid rgba(148, 163, 184, 0.14);
+        overflow: auto;
+        white-space: pre-wrap;
+        word-break: break-word;
+        color: #d7e9ff;
+        font-size: 13px;
+        line-height: 1.6;
+      }
+
+      .detail-grid {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .detail {
+        padding: 14px;
+        border-radius: 14px;
+        background: rgba(5, 11, 20, 0.55);
+        border: 1px solid rgba(148, 163, 184, 0.14);
+      }
+
+      .detail span {
+        display: block;
+        color: var(--muted);
+        font-size: 12px;
+        margin-bottom: 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .detail strong,
+      .detail code {
+        font-size: 14px;
+        word-break: break-word;
+      }
+
+      .table-wrap {
+        overflow: auto;
+        border-radius: 16px;
+        border: 1px solid rgba(148, 163, 184, 0.14);
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 420px;
+        background: rgba(5, 11, 20, 0.55);
+      }
+
+      th,
+      td {
+        text-align: left;
+        padding: 12px 14px;
+        border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+        vertical-align: top;
+        font-size: 13px;
+      }
+
+      th {
+        color: #cdd9ea;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        background: rgba(12, 21, 35, 0.95);
+      }
+
+      .note {
+        margin-top: 12px;
+        padding: 12px 14px;
+        border-radius: 14px;
+        background: rgba(245, 158, 11, 0.12);
+        border: 1px solid rgba(245, 158, 11, 0.18);
+        color: #ffe8bd;
+        font-size: 13px;
+        line-height: 1.55;
+      }
+
+      .empty {
+        color: var(--muted);
+      }
+
+      .footer {
+        padding: 8px 2px 0;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.5;
+      }
+
+      @media (max-width: 1080px) {
+        .hero,
+        .layout {
+          grid-template-columns: 1fr;
+        }
+
+        .metrics,
+        .detail-grid,
+        .form-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .event {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 640px) {
+        .app {
+          width: min(100% - 20px, 1400px);
+          padding: 14px 0 24px;
+        }
+
+        .hero-card,
+        .panel {
+          padding: 16px;
+        }
+
+        h1 {
+          font-size: 28px;
+        }
+
+        .actions {
+          flex-direction: column;
+        }
+
+        button {
+          width: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="app">
+      <section class="hero">
+        <article class="hero-card">
+          <div class="eyebrow">Ferramenta de diagnóstico interno</div>
+          <h1>Teste de API detalhado para a rede da empresa</h1>
+          <p class="lead">
+            Esta página dispara a requisição para a API interna, captura o
+            máximo de detalhes possível do ciclo da request e organiza o
+            resultado em painéis legíveis para depuração. A interface mostra
+            estados, tempos, cabeçalhos, corpo enviado, resposta bruta e
+            resposta parseada.
+          </p>
+
+          <div class="metrics">
+            <div class="metric">
+              <strong id="metric-transport">Proxy same-origin</strong>
+              <strong id="metric-url">192.168.001.43/login.fcgi</strong>
+            </div>
+            <div class="metric">
+              <span>Modo de envio</span>
+              <strong id="metric-method">POST JSON</strong>
+            </div>
+            <div class="metric">
+              <span>Credenciais padrão</span>
+              <strong>admin / admin</strong>
+            </div>
+          </div>
+        </article>
+
+        <aside class="panel status-card">
+          <div class="status-line">
+            <div>
+              <div class="eyebrow" style="margin-bottom: 12px">
+                Estado atual
+              </div>
+              <div class="status-badge" id="status-badge">
+                <span class="status-dot"></span
+                ><span id="status-text">Aguardando execução</span>
+              </div>
+            </div>
+          </div>
+          <p id="status-detail">
+            Nenhuma requisição foi executada ainda. Clique em "Executar teste"
+            para disparar a chamada e acompanhar cada etapa.
+          </p>
+          <div>
+            <div class="progress-rail" aria-hidden="true">
+              <div class="progress-bar" id="progress-bar"></div>
+            </div>
+            <div class="footer" id="progress-meta">Progresso: 0%</div>
+          </div>
+          <div class="chip-row">
+            <span class="chip" id="chip-duration">Duração: --</span>
+            <span class="chip" id="chip-status-code">HTTP: --</span>
+            <span class="chip" id="chip-bytes">Resposta: --</span>
+            <span class="chip" id="chip-upload">Upload: --</span>
+            <span class="chip" id="chip-download">Download: --</span>
+            <span class="chip" id="chip-transport">Transporte: proxy</span>
+          </div>
+        </aside>
+      </section>
+
+      <section class="layout">
+        <div class="stack">
+          <article class="panel">
+            <div class="panel-header">
+              <div>
+                <h2>Configuração da requisição</h2>
+                <p>
+                  Edite os campos abaixo antes de enviar. A página preserva o
+                  formato usado no exemplo original, mas adiciona controles
+                  úteis para depuração.
+                </p>
+              </div>
+              <div class="chip-row">
+                <span class="chip">CORS pode limitar dados expostos</span>
+              </div>
+            </div>
+
+            <div class="form-grid">
+              <div class="field full">
+                <label for="url">URL</label>
+                <input
+                  id="url"
+                  type="text"
+                  value="http://192.168.001.43/login.fcgi"
+                  spellcheck="false"
+                />
+              </div>
+              <div class="field">
+                <label for="method">Método</label>
+                <select id="method">
+                  <option value="POST" selected>POST</option>
+                  <option value="GET">GET</option>
+                  <option value="PUT">PUT</option>
+                  <option value="PATCH">PATCH</option>
+                  <option value="DELETE">DELETE</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="timeout">Timeout (ms)</label>
+                <input
+                  id="timeout"
+                  type="number"
+                  min="1000"
+                  step="500"
+                  value="15000"
+                />
+              </div>
+              <div class="field">
+                <label for="content-type">Content-Type</label>
+                <input
+                  id="content-type"
+                  type="text"
+                  value="application/json"
+                  spellcheck="false"
+                />
+              </div>
+              <div class="field">
+                <label for="use-proxy">Modo de conexão</label>
+                <select id="use-proxy">
+                  <option value="direct">Direto para a API</option>
+                  <option value="proxy" selected>Via proxy same-origin</option>
+                </select>
+              </div>
+              <div class="field full">
+                <label for="proxy-url">URL do proxy same-origin</label>
+                <input
+                  id="proxy-url"
+                  type="text"
+                  value="http://localhost:8787/api/proxy"
+                  spellcheck="false"
+                />
+              </div>
+              <div class="field full">
+                <label for="custom-headers">Headers adicionais em JSON</label>
+                <textarea id="custom-headers" spellcheck="false">
+{
+  "X-Debug-Source": "pagina-teste"
+}</textarea
+                >
+              </div>
+              <div class="field">
+                <label for="login">Login</label>
+                <input
+                  id="login"
+                  type="text"
+                  value="admin"
+                  spellcheck="false"
+                />
+              </div>
+              <div class="field">
+                <label for="password">Senha</label>
+                <input
+                  id="password"
+                  type="text"
+                  value="admin"
+                  spellcheck="false"
+                />
+              </div>
+              <div class="field full">
+                <label for="request-body">Body da request</label>
+                <textarea id="request-body" spellcheck="false">
+{
+  "login": "admin",
+  "password": "admin"
+}</textarea
+                >
+              </div>
+            </div>
+
+            <div class="actions">
+              <button class="primary" id="run-btn">Executar teste</button>
+              <button class="secondary" id="fill-from-form-btn">
+                Recriar body do formulário
+              </button>
+              <button class="secondary" id="copy-payload-btn">
+                Copiar payload
+              </button>
+              <button class="danger" id="clear-btn">Limpar saída</button>
+            </div>
+
+            <div class="note">
+              Use o modo proxy para evitar CORS de forma prática. A página envia
+              a requisição para o servidor local, e o servidor faz a chamada
+              real à API interna.
+            </div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-header">
+              <div>
+                <h2>Linha do tempo da execução</h2>
+                <p>
+                  Eventos da request em ordem cronológica, incluindo preparação,
+                  envio, resposta e finalização.
+                </p>
+              </div>
+            </div>
+            <div class="timeline" id="timeline"></div>
+          </article>
+        </div>
+
+        <div class="stack">
+          <article class="panel">
+            <div class="panel-header">
+              <div>
+                <h2>Resumo da request</h2>
+                <p>Informações estruturadas da última chamada executada.</p>
+              </div>
+            </div>
+            <div class="detail-grid" id="request-details">
+              <div class="detail">
+                <span>Método</span><strong class="empty">--</strong>
+              </div>
+              <div class="detail">
+                <span>URL</span><strong class="empty">--</strong>
+              </div>
+              <div class="detail">
+                <span>Timeout</span><strong class="empty">--</strong>
+              </div>
+              <div class="detail">
+                <span>Content-Type</span><strong class="empty">--</strong>
+              </div>
+              <div class="detail">
+                <span>Body enviado</span><strong class="empty">--</strong>
+              </div>
+              <div class="detail">
+                <span>Headers extras</span><strong class="empty">--</strong>
+              </div>
+            </div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-header">
+              <div>
+                <h2>Response detalhada</h2>
+                <p>
+                  Resultado bruto e parseado, além de status, headers e tempos.
+                </p>
+              </div>
+            </div>
+            <div class="detail-grid" id="response-details">
+              <div class="detail">
+                <span>Status</span><strong class="empty">--</strong>
+              </div>
+              <div class="detail">
+                <span>Status text</span><strong class="empty">--</strong>
+              </div>
+              <div class="detail">
+                <span>OK</span><strong class="empty">--</strong>
+              </div>
+              <div class="detail">
+                <span>Tempo total</span><strong class="empty">--</strong>
+              </div>
+              <div class="detail">
+                <span>Resposta parseada</span><strong class="empty">--</strong>
+              </div>
+              <div class="detail">
+                <span>Tamanho bruto</span><strong class="empty">--</strong>
+              </div>
+            </div>
+            <div style="height: 14px"></div>
+            <div class="panel-header" style="margin-bottom: 10px">
+              <div>
+                <h2>Corpo da resposta</h2>
+                <p>
+                  JSON formatado quando possível; caso contrário, texto bruto.
+                </p>
+              </div>
+            </div>
+            <pre class="codebox" id="response-body">
+Nenhuma resposta ainda.</pre
+            >
+          </article>
+
+          <article class="panel">
+            <div class="panel-header">
+              <div>
+                <h2>Headers da resposta</h2>
+                <p>Tudo que o navegador conseguiu expor do response.</p>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Header</th>
+                    <th>Valor</th>
+                  </tr>
+                </thead>
+                <tbody id="headers-table">
+                  <tr>
+                    <td colspan="2" class="empty">Sem headers ainda.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-header">
+              <div>
+                <h2>Erros e observações</h2>
+                <p>
+                  Mensagem detalhada caso a chamada falhe em qualquer estágio.
+                </p>
+              </div>
+            </div>
+            <pre class="codebox" id="error-box">Sem erros reportados.</pre>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const elements = {
+        url: document.getElementById("url"),
+        method: document.getElementById("method"),
+        timeout: document.getElementById("timeout"),
+        contentType: document.getElementById("content-type"),
+        useProxy: document.getElementById("use-proxy"),
+        proxyUrl: document.getElementById("proxy-url"),
+        customHeaders: document.getElementById("custom-headers"),
+        login: document.getElementById("login"),
+        password: document.getElementById("password"),
+        requestBody: document.getElementById("request-body"),
+        runBtn: document.getElementById("run-btn"),
+        fillFromFormBtn: document.getElementById("fill-from-form-btn"),
+        copyPayloadBtn: document.getElementById("copy-payload-btn"),
+        clearBtn: document.getElementById("clear-btn"),
+        statusText: document.getElementById("status-text"),
+        statusDetail: document.getElementById("status-detail"),
+        progressBar: document.getElementById("progress-bar"),
+        progressMeta: document.getElementById("progress-meta"),
+        chipDuration: document.getElementById("chip-duration"),
+        chipStatusCode: document.getElementById("chip-status-code"),
+        chipBytes: document.getElementById("chip-bytes"),
+        chipUpload: document.getElementById("chip-upload"),
+        chipDownload: document.getElementById("chip-download"),
+        chipTransport: document.getElementById("chip-transport"),
+        timeline: document.getElementById("timeline"),
+        requestDetails: document.getElementById("request-details"),
+        responseDetails: document.getElementById("response-details"),
+        responseBody: document.getElementById("response-body"),
+        headersTable: document.getElementById("headers-table"),
+        errorBox: document.getElementById("error-box"),
+        metricUrl: document.getElementById("metric-url"),
+        metricMethod: document.getElementById("metric-method"),
+        metricTransport: document.getElementById("metric-transport"),
+      };
+
+      const state = {
+        requestStart: 0,
+        eventIndex: 0,
+        activeRequest: null,
+        activeTimeoutId: null,
+        lastTransport: "proxy",
+      };
+
+      function formatMs(value) {
+        if (value == null || Number.isNaN(value)) {
+          return "--";
+        }
+        return `${Math.round(value)} ms`;
+      }
+
+      function formatBytes(value) {
+        if (value == null || Number.isNaN(value)) {
+          return "--";
+        }
+        const units = ["B", "KB", "MB", "GB"];
+        let size = value;
+        let unitIndex = 0;
+        while (size >= 1024 && unitIndex < units.length - 1) {
+          size /= 1024;
+          unitIndex += 1;
+        }
+        return `${size.toFixed(size >= 10 || unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
+      }
+
+      function setStatus(type, title, detail, progress) {
+        const colors = {
+          info: {
+            background: "rgba(76, 201, 240, 0.12)",
+            color: "#c7f2ff",
+            border: "rgba(76, 201, 240, 0.18)",
+            dot: "var(--accent)",
+          },
+          success: {
+            background: "rgba(34, 197, 94, 0.12)",
+            color: "#b6f7cb",
+            border: "rgba(34, 197, 94, 0.18)",
+            dot: "var(--success)",
+          },
+          warning: {
+            background: "rgba(245, 158, 11, 0.12)",
+            color: "#ffe8bd",
+            border: "rgba(245, 158, 11, 0.18)",
+            dot: "var(--warning)",
+          },
+          danger: {
+            background: "rgba(239, 68, 68, 0.12)",
+            color: "#ffd0d0",
+            border: "rgba(239, 68, 68, 0.18)",
+            dot: "var(--danger)",
+          },
+          idle: {
+            background: "rgba(148, 163, 184, 0.12)",
+            color: "#d6deea",
+            border: "rgba(148, 163, 184, 0.18)",
+            dot: "#94a3b8",
+          },
+        };
+
+        const config = colors[type] || colors.idle;
+        const badge = document.getElementById("status-badge");
+        const dot = badge.querySelector(".status-dot");
+        badge.style.background = config.background;
+        badge.style.color = config.color;
+        badge.style.borderColor = config.border;
+        dot.style.background = config.dot;
+        dot.style.boxShadow = `0 0 0 6px color-mix(in srgb, ${config.dot} 14%, transparent)`;
+
+        elements.statusText.textContent = title;
+        elements.statusDetail.textContent = detail;
+        elements.progressBar.style.width = `${Math.max(0, Math.min(progress ?? 0, 100))}%`;
+        elements.progressMeta.textContent = `Progresso: ${Math.max(0, Math.min(progress ?? 0, 100))}%`;
+      }
+
+      function addEvent(label, message, when = new Date()) {
+        state.eventIndex += 1;
+        const time = when.toLocaleTimeString("pt-BR", { hour12: false });
+        const item = document.createElement("div");
+        item.className = "event";
+        item.innerHTML = `<time>#${state.eventIndex} ${time}</time><div><strong>${label}</strong><span>${message}</span></div>`;
+        elements.timeline.appendChild(item);
+        elements.timeline.scrollTop = elements.timeline.scrollHeight;
+      }
+
+      function renderDetails(container, values) {
+        const cards = Array.from(container.querySelectorAll(".detail"));
+        cards.forEach((card, index) => {
+          const value = values[index] ?? "--";
+          const target = card.querySelector("strong, code");
+          if (target) {
+            target.textContent = value;
+            target.classList.toggle("empty", value === "--");
+          }
+        });
+      }
+
+      function renderHeaders(headers) {
+        if (!headers.length) {
+          elements.headersTable.innerHTML =
+            '<tr><td colspan="2" class="empty">Sem headers retornados pela API.</td></tr>';
+          return;
+        }
+
+        elements.headersTable.innerHTML = headers
+          .map(
+            ({ name, value }) =>
+              `<tr><td>${escapeHtml(name)}</td><td>${escapeHtml(value)}</td></tr>`,
+          )
+          .join("");
+      }
+
+      function escapeHtml(value) {
+        return String(value)
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#39;");
+      }
+
+      function syncBodyFromFields() {
+        const payload = {
+          login: elements.login.value.trim(),
+          password: elements.password.value.trim(),
+        };
+        elements.requestBody.value = JSON.stringify(payload, null, 2);
+        return payload;
+      }
+
+      function getTransportMode() {
+        return elements.useProxy.value === "proxy" ? "proxy" : "direct";
+      }
+
+      function setTransportBadge(mode) {
+        state.lastTransport = mode;
+        const label =
+          mode === "proxy" ? "Transporte: proxy" : "Transporte: direto";
+        elements.chipTransport.textContent = label;
+        elements.metricTransport.textContent =
+          mode === "proxy" ? "Proxy same-origin" : "Direto para API";
+      }
+
+      function parseJsonOrNull(rawText, fallbackValue = null) {
+        if (!rawText) {
+          return fallbackValue;
+        }
+
+        try {
+          return JSON.parse(rawText);
+        } catch (error) {
+          return null;
+        }
+      }
+
+      function parseHeadersText(rawText) {
+        const parsed = parseJsonOrNull(rawText, {});
+
+        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+          throw new Error(
+            "Os headers adicionais precisam ser um objeto JSON válido.",
+          );
+        }
+
+        return Object.entries(parsed).reduce((accumulator, [name, value]) => {
+          const headerName = String(name).trim();
+          if (!headerName) {
+            return accumulator;
+          }
+          accumulator[headerName] = String(value);
+          return accumulator;
+        }, {});
+      }
+
+      function resetOutput() {
+        state.eventIndex = 0;
+        elements.timeline.innerHTML = "";
+        elements.responseBody.textContent = "Nenhuma resposta ainda.";
+        elements.errorBox.textContent = "Sem erros reportados.";
+        renderHeaders([]);
+        renderDetails(elements.requestDetails, [
+          "--",
+          "--",
+          "--",
+          "--",
+          "--",
+          "--",
+        ]);
+        renderDetails(elements.responseDetails, [
+          "--",
+          "--",
+          "--",
+          "--",
+          "--",
+          "--",
+        ]);
+        elements.chipDuration.textContent = "Duração: --";
+        elements.chipStatusCode.textContent = "HTTP: --";
+        elements.chipBytes.textContent = "Resposta: --";
+        elements.chipUpload.textContent = "Upload: --";
+        elements.chipDownload.textContent = "Download: --";
+        setTransportBadge(getTransportMode());
+        setStatus(
+          "idle",
+          "Aguardando execução",
+          'Nenhuma requisição foi executada ainda. Clique em "Executar teste" para disparar a chamada e acompanhar cada etapa.',
+          0,
+        );
+      }
+
+      function buildPayload() {
+        const rawBody = elements.requestBody.value.trim();
+        const extraHeadersRaw = elements.customHeaders.value.trim();
+        let parsedBody = null;
+        let extraHeaders = {};
+
+        if (rawBody) {
+          try {
+            parsedBody = JSON.parse(rawBody);
+          } catch (error) {
+            parsedBody = rawBody;
+          }
+        }
+
+        if (extraHeadersRaw) {
+          extraHeaders = parseHeadersText(extraHeadersRaw);
+        }
+
+        return {
+          url: elements.url.value.trim(),
+          method: elements.method.value,
+          timeout: Math.max(1000, Number(elements.timeout.value) || 15000),
+          contentType: elements.contentType.value.trim() || "application/json",
+          rawBody,
+          parsedBody,
+          extraHeaders,
+          transportMode: getTransportMode(),
+          proxyUrl: elements.proxyUrl.value.trim() || "/api/proxy",
+        };
+      }
+
+      function clearActiveRequestState() {
+        if (state.activeTimeoutId) {
+          clearTimeout(state.activeTimeoutId);
+          state.activeTimeoutId = null;
+        }
+        state.activeRequest = null;
+        elements.runBtn.disabled = false;
+      }
+
+      function parseResponseHeaders(rawHeaders) {
+        return String(rawHeaders || "")
+          .trim()
+          .split(/\r?\n/)
+          .filter(Boolean)
+          .map((line) => {
+            const separatorIndex = line.indexOf(":");
+            if (separatorIndex === -1) {
+              return { name: line.trim(), value: "" };
+            }
+            return {
+              name: line.slice(0, separatorIndex).trim(),
+              value: line.slice(separatorIndex + 1).trim(),
+            };
+          });
+      }
+
+      function runRequest() {
+        if (state.activeRequest) {
+          state.activeRequest.abort();
+        }
+
+        let payload;
+        try {
+          payload = buildPayload();
+        } catch (error) {
+          const message =
+            error instanceof Error ? error.message : String(error);
+          elements.errorBox.textContent = message;
+          setStatus("danger", "Headers inválidos", message, 0);
+          addEvent("Validação falhou", message);
+          return;
+        }
+
+        if (!payload.url) {
+          setStatus(
+            "danger",
+            "URL inválida",
+            "Informe uma URL antes de executar a requisição.",
+            0,
+          );
+          addEvent(
+            "Validação falhou",
+            "A URL está vazia e a requisição não foi disparada.",
+          );
+          return;
+        }
+
+        elements.runBtn.disabled = true;
+        elements.metricUrl.textContent = payload.url.replace(
+          /^https?:\/\//,
+          "",
+        );
+        elements.metricMethod.textContent = `${payload.method} ${payload.contentType}`;
+        setTransportBadge(payload.transportMode);
+
+        const requestBody =
+          payload.method === "GET" || payload.method === "DELETE"
+            ? null
+            : payload.rawBody;
+        const headers = { ...payload.extraHeaders };
+        if (requestBody != null && payload.contentType) {
+          headers["Content-Type"] = payload.contentType;
+        }
+
+        const isProxy = payload.transportMode === "proxy";
+        const outboundUrl = isProxy ? payload.proxyUrl : payload.url;
+        const outboundMethod = isProxy ? "POST" : payload.method;
+        const outboundBody = isProxy
+          ? JSON.stringify({
+              targetUrl: payload.url,
+              method: payload.method,
+              headers,
+              body: requestBody,
+              timeout: payload.timeout,
+            })
+          : requestBody;
+        const outboundHeaders = isProxy
+          ? {
+              "Content-Type": "application/json",
+            }
+          : headers;
+
+        renderDetails(elements.requestDetails, [
+          payload.method,
+          payload.url,
+          formatMs(payload.timeout),
+          payload.contentType,
+          requestBody
+            ? requestBody.length > 120
+              ? `${requestBody.slice(0, 117)}...`
+              : requestBody
+            : "Sem corpo",
+          Object.keys(payload.extraHeaders).length
+            ? `${isProxy ? `proxy => ${payload.proxyUrl} | ` : ""}${JSON.stringify(payload.extraHeaders)}`
+            : isProxy
+              ? `proxy => ${payload.proxyUrl}`
+              : "Sem headers extras",
+        ]);
+        setStatus(
+          "info",
+          isProxy ? "Preparando proxy" : "Preparando request",
+          isProxy
+            ? `Montando o envelope para o proxy same-origin em ${payload.proxyUrl}.`
+            : "Montando os parâmetros, corpo e headers antes do envio.",
+          8,
+        );
+        addEvent(
+          "Preparação",
+          isProxy
+            ? `Proxy same-origin configurado em ${payload.proxyUrl} para ${payload.url}.`
+            : `Iniciando a chamada para ${payload.url} com método ${payload.method}.`,
+        );
+
+        const startedAt = performance.now();
+        state.requestStart = startedAt;
+        elements.chipUpload.textContent = outboundBody
+          ? `Upload: ${formatBytes(new Blob([outboundBody]).size)}`
+          : "Upload: Sem corpo";
+        elements.chipDownload.textContent = "Download: 0%";
+
+        const xhr = new XMLHttpRequest();
+        state.activeRequest = xhr;
+        xhr.open(outboundMethod, outboundUrl, true);
+        xhr.timeout = payload.timeout;
+        xhr.withCredentials = false;
+        xhr.responseType = "text";
+
+        Object.entries(outboundHeaders).forEach(([name, value]) => {
+          try {
+            xhr.setRequestHeader(name, value);
+          } catch (error) {
+            addEvent(
+              "Header ignorado",
+              `Não foi possível aplicar o header ${name}: ${error instanceof Error ? error.message : String(error)}`,
+            );
+          }
+        });
+
+        xhr.upload.onprogress = (event) => {
+          if (!event.lengthComputable) {
+            elements.chipUpload.textContent = `Upload: ${formatBytes(event.loaded)}`;
+            return;
+          }
+
+          const percent = Math.round((event.loaded / event.total) * 100);
+          elements.chipUpload.textContent = `Upload: ${percent}% (${formatBytes(event.loaded)} / ${formatBytes(event.total)})`;
+          setStatus(
+            "info",
+            "Enviando body",
+            `Upload em andamento: ${percent}% do corpo foi transmitido.`,
+            Math.min(40, 22 + percent * 0.18),
+          );
+        };
+
+        xhr.onprogress = (event) => {
+          if (!event.lengthComputable) {
+            elements.chipDownload.textContent = `Download: ${formatBytes(event.loaded)}`;
+            setStatus(
+              "info",
+              "Recebendo resposta",
+              `Resposta recebida parcialmente: ${formatBytes(event.loaded)}.`,
+              68,
+            );
+            return;
+          }
+
+          const percent = Math.round((event.loaded / event.total) * 100);
+          elements.chipDownload.textContent = `Download: ${percent}% (${formatBytes(event.loaded)} / ${formatBytes(event.total)})`;
+          setStatus(
+            "info",
+            "Recebendo resposta",
+            `Download em andamento: ${percent}% do corpo foi recebido.`,
+            Math.min(92, 68 + percent * 0.24),
+          );
+        };
+
+        xhr.onreadystatechange = () => {
+          if (xhr.readyState === XMLHttpRequest.HEADERS_RECEIVED) {
+            addEvent(
+              "Headers recebidos",
+              `Status provisório ${xhr.status} ${xhr.statusText || ""}.`,
+            );
+            setStatus(
+              "info",
+              "Headers recebidos",
+              "Os cabeçalhos da resposta chegaram ao navegador.",
+              58,
+            );
+          }
+        };
+
+        xhr.onload = () => {
+          const totalDuration = performance.now() - startedAt;
+          const headerEntries = parseResponseHeaders(
+            xhr.getAllResponseHeaders(),
+          );
+          const rawText = xhr.responseText || "";
+          const responseBytes = new Blob([rawText]).size;
+          const parsedResponse = parseJsonOrNull(rawText, rawText);
+          const proxyEnvelope =
+            isProxy &&
+            parsedResponse &&
+            typeof parsedResponse === "object" &&
+            !Array.isArray(parsedResponse)
+              ? parsedResponse
+              : null;
+          const upstreamHeaders =
+            proxyEnvelope && proxyEnvelope.headers
+              ? Array.isArray(proxyEnvelope.headers)
+                ? proxyEnvelope.headers
+                : Object.entries(proxyEnvelope.headers).map(
+                    ([name, value]) => ({ name, value: String(value) }),
+                  )
+              : headerEntries;
+          const upstreamBody =
+            proxyEnvelope &&
+            Object.prototype.hasOwnProperty.call(proxyEnvelope, "bodyText")
+              ? proxyEnvelope.bodyText
+              : rawText;
+          const upstreamStatus =
+            proxyEnvelope && Number.isFinite(Number(proxyEnvelope.status))
+              ? Number(proxyEnvelope.status)
+              : xhr.status;
+          const upstreamStatusText =
+            proxyEnvelope && proxyEnvelope.statusText
+              ? String(proxyEnvelope.statusText)
+              : xhr.statusText || "Sem status text";
+          const responseKind = proxyEnvelope
+            ? `proxy envelope (${proxyEnvelope.ok ? "ok" : "erro"})`
+            : rawText && parsedResponse === null
+              ? "texto bruto"
+              : parsedResponse == null
+                ? "Resposta vazia"
+                : typeof parsedResponse;
+          const prettyBody = proxyEnvelope
+            ? JSON.stringify(proxyEnvelope, null, 2)
+            : typeof parsedResponse === "string"
+              ? parsedResponse
+              : parsedResponse == null
+                ? rawText || "{}"
+                : JSON.stringify(parsedResponse, null, 2) || "{}";
+
+          elements.responseBody.textContent = rawText
+            ? prettyBody
+            : "Resposta vazia.";
+          renderHeaders(upstreamHeaders);
+          renderDetails(elements.responseDetails, [
+            upstreamStatus ? String(upstreamStatus) : "--",
+            upstreamStatusText,
+            String(upstreamStatus >= 200 && upstreamStatus < 300),
+            formatMs(totalDuration),
+            responseKind,
+            formatBytes(responseBytes),
+          ]);
+
+          elements.chipDuration.textContent = `Duração: ${formatMs(totalDuration)}`;
+          elements.chipStatusCode.textContent = `HTTP: ${upstreamStatus || "--"}`;
+          elements.chipBytes.textContent = `Resposta: ${formatBytes(responseBytes)}`;
+          elements.chipDownload.textContent = `Download: ${formatBytes(responseBytes)}`;
+
+          if (upstreamStatus >= 200 && upstreamStatus < 300) {
+            setStatus(
+              "success",
+              "Concluída com sucesso",
+              `A resposta foi lida e processada em ${formatMs(totalDuration)}.`,
+              100,
+            );
+            addEvent(
+              "Finalização",
+              `Requisição concluída com sucesso em ${formatMs(totalDuration)}.`,
+            );
+          } else {
+            setStatus(
+              "warning",
+              "Resposta com erro HTTP",
+              `A chamada retornou ${upstreamStatus} ${upstreamStatusText || ""}.`,
+              100,
+            );
+            addEvent(
+              "Finalização",
+              `Resposta HTTP indicou falha: ${upstreamStatus} ${upstreamStatusText || ""}.`,
+            );
+          }
+
+          clearActiveRequestState();
+        };
+
+        xhr.onerror = () => {
+          const totalDuration = performance.now() - startedAt;
+          const message =
+            "Erro de rede: o navegador não conseguiu concluir a requisição.";
+
+          elements.errorBox.textContent = message;
+          elements.responseBody.textContent =
+            "Sem resposta válida devido ao erro.";
+          renderDetails(elements.responseDetails, [
+            "--",
+            "--",
+            "false",
+            formatMs(totalDuration),
+            "Falha",
+            "--",
+          ]);
+          renderHeaders([]);
+          elements.chipDuration.textContent = `Duração: ${formatMs(totalDuration)}`;
+          elements.chipStatusCode.textContent = "HTTP: --";
+          elements.chipBytes.textContent = "Resposta: --";
+          elements.chipUpload.textContent = "Upload: --";
+          elements.chipDownload.textContent = "Download: --";
+          setStatus("danger", "Falha na requisição", message, 100);
+          addEvent("Erro", message);
+          clearActiveRequestState();
+        };
+
+        xhr.onabort = () => {
+          const totalDuration = performance.now() - startedAt;
+          const message =
+            "A requisição foi cancelada manualmente antes da conclusão.";
+
+          elements.errorBox.textContent = message;
+          elements.chipDuration.textContent = `Duração: ${formatMs(totalDuration)}`;
+          setStatus("warning", "Requisição cancelada", message, 0);
+          addEvent("Abortado", message);
+          clearActiveRequestState();
+        };
+
+        xhr.ontimeout = () => {
+          const totalDuration = performance.now() - startedAt;
+          const message = "A requisição excedeu o tempo limite configurado.";
+
+          elements.errorBox.textContent = message;
+          elements.chipDuration.textContent = `Duração: ${formatMs(totalDuration)}`;
+          setStatus("danger", "Timeout atingido", message, 0);
+          addEvent("Timeout", message);
+          clearActiveRequestState();
+        };
+
+        setStatus(
+          "info",
+          isProxy ? "Enviando proxy" : "Enviando request",
+          isProxy
+            ? `A chamada foi enviada para o proxy same-origin em ${payload.proxyUrl}.`
+            : "A chamada foi iniciada e está aguardando resposta da rede.",
+          22,
+        );
+        addEvent(
+          "Envio",
+          isProxy
+            ? `Envelope proxy enviado para ${payload.proxyUrl}.`
+            : "Requisição enviada para o endpoint interno.",
+        );
+
+        xhr.send(outboundBody == null ? null : outboundBody);
+
+        state.activeTimeoutId = window.setTimeout(() => {
+          if (state.activeRequest === xhr) {
+            xhr.abort();
+          }
+        }, payload.timeout);
+      }
+
+      elements.runBtn.addEventListener("click", runRequest);
+      elements.fillFromFormBtn.addEventListener("click", () => {
+        syncBodyFromFields();
+        setStatus(
+          "info",
+          "Body atualizado",
+          "O corpo JSON foi recriado com os valores atuais dos campos do formulário.",
+          4,
+        );
+        addEvent(
+          "Body sincronizado",
+          "O body foi reconstruído a partir dos campos login e senha.",
+        );
+      });
+
+      elements.copyPayloadBtn.addEventListener("click", async () => {
+        const payload = buildPayload();
+        const text = JSON.stringify(
+          {
+            transportMode: payload.transportMode,
+            proxyUrl: payload.proxyUrl,
+            targetUrl: payload.url,
+            method: payload.method,
+            headers: {
+              ...(payload.contentType
+                ? { "Content-Type": payload.contentType }
+                : {}),
+              ...payload.extraHeaders,
+            },
+            body: payload.parsedBody,
+          },
+          null,
+          2,
+        );
+
+        try {
+          await navigator.clipboard.writeText(text);
+          setStatus(
+            "success",
+            "Payload copiado",
+            "O payload estruturado foi copiado para a área de transferência.",
+            12,
+          );
+          addEvent(
+            "Copiar payload",
+            "Payload estruturado copiado para a área de transferência.",
+          );
+        } catch (error) {
+          setStatus(
+            "warning",
+            "Falha ao copiar",
+            "O navegador bloqueou o acesso à área de transferência.",
+            12,
+          );
+          addEvent(
+            "Copiar payload",
+            "Não foi possível copiar o payload para a área de transferência.",
+          );
+        }
+      });
+
+      elements.clearBtn.addEventListener("click", () => {
+        resetOutput();
+      });
+
+      elements.login.addEventListener("input", syncBodyFromFields);
+      elements.password.addEventListener("input", syncBodyFromFields);
+
+      syncBodyFromFields();
+      resetOutput();
+      addEvent(
+        "Pronto",
+        "Interface carregada e pronta para testar a API interna.",
+      );
+    </script>
+  </body>
+</html>
